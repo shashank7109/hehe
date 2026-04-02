@@ -1,7 +1,7 @@
 const Application = require('../models/Application');
 const ApplicationLog = require('../models/ApplicationLog');
 const RoutingConfig = require('../models/RoutingConfig');
-const { sendEmail } = require('../utils/emailService');
+const { enqueueEmail } = require('../utils/emailQueue');
 
 const submitApplication = async (req, res) => {
   try {
@@ -50,11 +50,11 @@ const submitApplication = async (req, res) => {
     // Notify officer via routing config (fire-and-forget)
     const routing = await RoutingConfig.findOne({ departmentId });
     if (routing?.primaryApproverEmail) {
-      sendEmail({
+      enqueueEmail({
         to: routing.primaryApproverEmail,
         subject: 'New NOC Application Submitted',
         text: `A new NOC application for ${companyName} has been submitted by ${req.user.name}.`,
-      }).catch(err => console.error('Failed to send officer notification:', err.message));
+      });
     }
 
     res.status(201).json(application);

@@ -3,7 +3,7 @@ const rateLimit = require('express-rate-limit');
 // Global limiter — loose cap on all routes
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: 'Too many requests from this IP, please try again after 15 minutes.' }

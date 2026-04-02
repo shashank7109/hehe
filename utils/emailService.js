@@ -22,12 +22,12 @@ const createTransporter = () => {
   }
 
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.mailtrap.io',
-    port: parseInt(process.env.SMTP_PORT, 10) || 587,
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT, 10),
     secure: parseInt(process.env.SMTP_PORT, 10) === 465,
     auth: {
-      user: process.env.SMTP_USER || 'placeholder_user',
-      pass: process.env.SMTP_PASSWORD || 'placeholder_pass',
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASSWORD,
     },
   });
 };
@@ -35,7 +35,7 @@ const createTransporter = () => {
 // Singleton transporter — created once on startup, reused for every email
 const transporter = createTransporter();
 
-const defaultFrom = process.env.MAIL_FROM || process.env.SMTP_FROM || 'NOC Portal <noreply@rgipt.ac.in>';
+const defaultFrom = process.env.MAIL_FROM || process.env.SMTP_FROM;
 
 /**
  * Escapes user-supplied content to prevent XSS in HTML emails.

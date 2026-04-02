@@ -1,8 +1,8 @@
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const OTP = require('../models/OTP');
-const { sendEmail } = require('../utils/emailService');
+const { enqueueEmail } = require('../utils/emailQueue');
 const generateToken = require('../utils/generateToken');
 
 // bcrypt rounds defined once — change here to affect all hashing
@@ -63,7 +63,7 @@ const sendOtp = async (req, res) => {
     await OTP.findOneAndDelete({ email });
     await OTP.create({ email, otp: otpCode });
 
-    await sendEmail({
+    enqueueEmail({
       to: email,
       subject: 'NOC Portal - Verification Code',
       text: `Your verification code is ${otpCode}. It will expire in 5 minutes.`,
@@ -131,7 +131,7 @@ const forgotPassword = async (req, res) => {
     await OTP.findOneAndDelete({ email });
     await OTP.create({ email, otp: otpCode });
 
-    await sendEmail({
+    enqueueEmail({
       to: email,
       subject: 'NOC Portal - Password Reset Code',
       text: `Your password reset code is ${otpCode}. It will expire in 5 minutes.`,

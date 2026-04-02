@@ -4,6 +4,8 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 const { MongoMemoryServer } = require('mongodb-memory-server');
+const cluster = require('cluster');
+const os = require('os');
 
 dotenv.config();
 
@@ -65,6 +67,37 @@ app.get(['/health', '/api/health'], (req, res) => {
   });
 });
 
+// --- Prom Client Metrics ---
+const promClient = require('prom-client');
+promClient.collectDefaultMetrics();
+const httpRequestDurationMicroseconds = new promClient.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'Duration of HTTP requests in seconds',
+  labelNames: ['method', 'route', 'status_code'],
+  buckets: [0.1, 0.3, 0.5, 0.7, 1, 3, 5, 10]
+});
+
+app.use((req, res, next) => {
+  const start = process.hrtime();
+  res.on('finish', () => {
+    const diff = process.hrtime(start);
+    const time = diff[0] + diff[1] / 1e9;
+    httpRequestDurationMicroseconds
+      .labels(req.method, req.route ? req.route.path : req.path, res.statusCode)
+      .observe(time);
+  });
+  next();
+});
+
+app.get('/metrics', async (req, res) => {
+  if (req.headers['x-metrics-secret'] !== process.env.METRICS_SECRET) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+  res.set('Content-Type', promClient.register.contentType);
+  const metrics = await promClient.register.metrics();
+  res.send(metrics);
+});
+
 // --- Routes ---
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
@@ -92,19 +125,42 @@ const startServer = async () => {
     if (process.env.USE_IN_MEMORY_DB === 'true' || !mongoUri) {
       const mem = await MongoMemoryServer.create();
       mongoUri = mem.getUri();
-      console.log('Using in-memory MongoDB instance');
+      console.log(`Worker ${process.pid} Using in-memory MongoDB instance`);
     }
-    await mongoose.connect(mongoUri);
-    console.log('MongoDB Connected');
+    // Set maxPoolSize limits, max 10 connections per worker. 
+    // Math: Active Connections = Workers x maxPoolSize (e.g. 4 x 10 = 40). 
+    // This safely keeps us below MongoDB Atlas M0 limit of 500 or M10 limit of 750.
+    // minPoolSize: 2 keeps baseline connections warm to prevent slow cold-starts.
+    await mongoose.connect(mongoUri, { maxPoolSize: 10, minPoolSize: 2 });
+    console.log(`Worker ${process.pid} MongoDB Connected`);
 
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      console.log(`Worker ${process.pid} Server running on port ${PORT}`);
     });
   } catch (error) {
-    console.error(`Startup Error: ${error.message}`);
+    console.error(`Worker ${process.pid} Startup Error: ${error.message}`);
     process.exit(1);
   }
 };
 
-startServer();
+// Start cluster if not in memory mode to prevent isolated DBs, and limit workers
+const numWorkers = process.env.WEB_CONCURRENCY ? parseInt(process.env.WEB_CONCURRENCY) : os.cpus().length;
+
+if ((cluster.isPrimary || cluster.isMaster) && process.env.USE_IN_MEMORY_DB !== 'true') {
+  console.log(`Primary process ${process.pid} is running`);
+  console.log(`Forking ${numWorkers} workers for Node clustering (Load Balancing)`);
+
+  for (let i = 0; i < numWorkers; i++) {
+    cluster.fork();
+  }
+
+  cluster.on('exit', (worker, code, signal) => {
+    console.log(`Worker ${worker.process.pid} died with code: ${code}, and signal: ${signal}`);
+    console.log('Starting a new worker...');
+    cluster.fork();
+  });
+} else {
+  // If we're a worker process, or in memory DB mode, start the server
+  startServer();
+}
