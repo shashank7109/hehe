@@ -5,6 +5,7 @@ const OTP = require('../models/OTP');
 const { enqueueEmail } = require('../utils/emailQueue');
 const generateToken = require('../utils/generateToken');
 const { getCache, setCache, delCache } = require('../utils/redis');
+const logger = require('../utils/logger');
 
 // bcrypt rounds defined once — change here to affect all hashing
 const SALT_ROUNDS = 12;
@@ -188,6 +189,7 @@ const login = async (req, res) => {
 
     const user = await User.findOne({ email }).populate('departmentId', 'name code');
     if (user && (await bcrypt.compare(password, user.password))) {
+      logger.info(`User logged in successfully: ${user.email}`);
       res.json({
         _id: user.id,
         name: user.name,

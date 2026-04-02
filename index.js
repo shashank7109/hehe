@@ -6,6 +6,8 @@ const path = require('path');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const cluster = require('cluster');
 const os = require('os');
+const logger = require('./utils/logger');
+const morgan = require('morgan');
 
 dotenv.config();
 
@@ -45,6 +47,9 @@ app.use(cors({
   },
   credentials: true,
 }));
+
+app.use(morgan(':method :url :status :response-time ms - size::res[content-length]', { stream: logger.stream }));
+
 app.use(globalLimiter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -106,13 +111,15 @@ app.use('/api/officer', officerRoutes);
 
 // --- 404 Handler ---
 app.use((req, res) => {
+  logger.warn(`[404] Route ${req.originalUrl} not found`);
   res.status(404).json({ message: `Route ${req.originalUrl} not found` });
 });
 
 // --- Global Error Handler (must be last) ---
 app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
-  console.error(err.stack);
   const status = err.statusCode || err.status || 500;
+  logger.error(`[Unhandled] [${req.method}] ${req.path} -> HTTP ${status}: ${err.message}`);
+  logger.error(err.stack);
   res.status(status).json({ message: err.message || 'Internal Server Error' });
 });
 
@@ -125,21 +132,21 @@ const startServer = async () => {
     if (process.env.USE_IN_MEMORY_DB === 'true' || !mongoUri) {
       const mem = await MongoMemoryServer.create();
       mongoUri = mem.getUri();
-      console.log(`Worker ${process.pid} Using in-memory MongoDB instance`);
+      logger.info(`Worker ${process.pid} Using in-memory MongoDB instance`);
     }
     // Set maxPoolSize limits, max 10 connections per worker. 
     // Math: Active Connections = Workers x maxPoolSize (e.g. 4 x 10 = 40). 
     // This safely keeps us below MongoDB Atlas M0 limit of 500 or M10 limit of 750.
     // minPoolSize: 2 keeps baseline connections warm to prevent slow cold-starts.
     await mongoose.connect(mongoUri, { maxPoolSize: 10, minPoolSize: 2 });
-    console.log(`Worker ${process.pid} MongoDB Connected`);
+    logger.info(`Worker ${process.pid} MongoDB Connected`);
 
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
-      console.log(`Worker ${process.pid} Server running on port ${PORT}`);
+      logger.info(`Worker ${process.pid} Server running on port ${PORT}`);
     });
   } catch (error) {
-    console.error(`Worker ${process.pid} Startup Error: ${error.message}`);
+    logger.error(`Worker ${process.pid} Startup Error: ${error.message}`);
     process.exit(1);
   }
 };
@@ -148,16 +155,16 @@ const startServer = async () => {
 const numWorkers = process.env.WEB_CONCURRENCY ? parseInt(process.env.WEB_CONCURRENCY) : os.cpus().length;
 
 if ((cluster.isPrimary || cluster.isMaster) && process.env.USE_IN_MEMORY_DB !== 'true') {
-  console.log(`Primary process ${process.pid} is running`);
-  console.log(`Forking ${numWorkers} workers for Node clustering (Load Balancing)`);
+  logger.info(`Primary process ${process.pid} is running`);
+  logger.info(`Forking ${numWorkers} workers for Node clustering (Load Balancing)`);
 
   for (let i = 0; i < numWorkers; i++) {
     cluster.fork();
   }
 
   cluster.on('exit', (worker, code, signal) => {
-    console.log(`Worker ${worker.process.pid} died with code: ${code}, and signal: ${signal}`);
-    console.log('Starting a new worker...');
+    logger.warn(`Worker ${worker.process.pid} died with code: ${code}, and signal: ${signal}`);
+    logger.info('Starting a new worker...');
     cluster.fork();
   });
 } else {

@@ -2,6 +2,7 @@ const Application = require('../models/Application');
 const ApplicationLog = require('../models/ApplicationLog');
 const RoutingConfig = require('../models/RoutingConfig');
 const { enqueueEmail } = require('../utils/emailQueue');
+const logger = require('../utils/logger');
 
 const submitApplication = async (req, res) => {
   try {
@@ -57,9 +58,10 @@ const submitApplication = async (req, res) => {
       });
     }
 
+    logger.info(`New application submitted by ${req.user.name} (Student ID: ${req.user._id}) for ${companyName}`);
     res.status(201).json(application);
   } catch (error) {
-    console.error('Submit Error:', error);
+    logger.error(`Application Submit Error: ${error.stack}`);
     res.status(500).json({ message: error.message || 'Server error' });
   }
 };
