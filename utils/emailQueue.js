@@ -1,15 +1,17 @@
 const { Queue, Worker } = require('bullmq');
 const { sendEmail } = require('./emailService');
 
-const connectionOptions = {
-    url: process.env.REDIS_URL || 'redis://127.0.0.1:6379'
-};
+const IORedis = require('ioredis');
 
-const emailQueue = new Queue('email-queue', { connection: connectionOptions });
+const connection = new IORedis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
+    maxRetriesPerRequest: null,
+});
+
+const emailQueue = new Queue('email-queue', { connection });
 
 const emailWorker = new Worker('email-queue', async job => {
     await sendEmail(job.data);
-}, { connection: connectionOptions });
+}, { connection });
 
 emailWorker.on('completed', job => {
     console.log(`[BullMQ] Email job ${job.id} completed successfully.`);
