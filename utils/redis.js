@@ -16,6 +16,10 @@ redisClient.on('error', (err) => {
         console.warn('[Redis] Connection inaccessible. Fallback to MongoDB is active.', err.message);
         isErrorLogged = true; // Prevent spamming console every reconnect attempt
     }
+    if (err.message && err.message.includes('max requests limit exceeded')) {
+        console.error('[Redis] Upstash limit exceeded. Disconnecting to prevent retry loops.');
+        redisClient.disconnect();
+    }
 });
 
 redisClient.on('ready', () => {

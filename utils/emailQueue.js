@@ -7,6 +7,13 @@ const connection = new IORedis(process.env.REDIS_URL || 'redis://127.0.0.1:6379'
     maxRetriesPerRequest: null,
 });
 
+connection.on('error', (err) => {
+    if (err.message && err.message.includes('max requests limit exceeded')) {
+        console.error('[BullMQ] Upstash limit exceeded. Disconnecting queue connection.');
+        connection.disconnect();
+    }
+});
+
 const emailQueue = new Queue('email-queue', { connection });
 
 /*
