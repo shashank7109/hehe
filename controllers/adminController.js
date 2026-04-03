@@ -101,7 +101,7 @@ const assignRole = async (req, res) => {
     enqueueEmail({
       to: email,
       subject: 'NOC Portal — Your Role & Temporary Password',
-      text: `Hello,\n\nYou have been assigned the role of ${role} on the NOC Portal.\n\nYour temporary login password is:\n\n  ${tempPassword}\n\nPlease log in at ${process.env.CLIENT_URL || 'https://noc.rgipt.ac.in'} using this email and temporary password. You should change it after your first login.\n\nThank you!`,
+      text: `Hello,\n\nYou have been assigned the role of ${role} on the NOC Portal.\n\nYour temporary login password is:\n\n  ${tempPassword}\n\nPlease log in at ${process.env.CLIENT_URL || 'https://noc.rgiptresume.in'} using this email and temporary password. You should change it after your first login.\n\nThank you!`,
     });
 
     res.status(200).json({ message: `Role assigned and credentials emailed to ${email}!`, user });
@@ -126,7 +126,7 @@ const resendInvite = async (req, res) => {
     enqueueEmail({
       to: email,
       subject: 'NOC Portal — Your New Temporary Password',
-      text: `Hello,\n\nYour registration invitation has been resent.\n\nYou have been assigned the role of ${user.role} on the NOC Portal.\n\nYour new temporary login password is:\n\n  ${tempPassword}\n\nPlease log in at ${process.env.CLIENT_URL || 'https://noc.rgipt.ac.in'} using this email and temporary password.\n\nThank you!`,
+      text: `Hello,\n\nYour registration invitation has been resent.\n\nYou have been assigned the role of ${user.role} on the NOC Portal.\n\nYour new temporary login password is:\n\n  ${tempPassword}\n\nPlease log in at ${process.env.CLIENT_URL || 'https://noc.rgiptresume.in'} using this email and temporary password.\n\nThank you!`,
     });
 
     res.status(200).json({ message: `Fresh credentials emailed to ${email}` });
