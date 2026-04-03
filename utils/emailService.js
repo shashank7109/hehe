@@ -1,10 +1,11 @@
 const { Resend } = require('resend');
 
-// Initialize Resend automatically handling conventional SDK API keys, or safely
-// extracting the 're_...' token if the user stored it previously as an SMTP URL.
+// Initialize Resend with the API key from env.
+// Supports plain key (re_xxx) or key accidentally wrapped in an SMTP URL string.
 let apiKey = process.env.RESEND_API_KEY || process.env.RESEND_SMTP_URL || process.env.SMTP_URL || '';
-if (apiKey.includes('re_')) {
-  apiKey = apiKey.match(/(re_[a-zA-Z0-9]+)/)?.[1] || apiKey;
+if (apiKey.includes('re_') && !apiKey.startsWith('re_')) {
+  // Extract key from a URL-like string — allow letters, digits, underscores
+  apiKey = apiKey.match(/(re_[a-zA-Z0-9_]+)/)?.[1] || apiKey;
 }
 
 const resend = new Resend(apiKey);

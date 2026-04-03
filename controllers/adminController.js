@@ -1,6 +1,7 @@
 const Department = require('../models/Department');
 const RoutingConfig = require('../models/RoutingConfig');
 const User = require('../models/User');
+const bcrypt = require('bcrypt');
 const { enqueueEmail } = require('../utils/emailQueue');
 
 const getDepartments = async (req, res) => {
@@ -74,34 +75,35 @@ const assignRole = async (req, res) => {
   try {
     const { email, role, departmentId } = req.body;
     let user = await User.findOne({ email });
-    let isNewUser = false;
+
+    // Generate a 6-digit temporary password
+    const tempPassword = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedTemp = await bcrypt.hash(tempPassword, 12);
 
     if (!user) {
-      isNewUser = true;
       user = await User.create({
         email,
         name: 'Pending User',
-        password: 'PENDING_USER_NO_PASSWORD',
+        password: hashedTemp,
         role,
         departmentId: departmentId || undefined
       });
     } else {
       user.role = role;
+      user.name = user.name === 'Pending User' ? 'Pending User' : user.name;
+      // Reset to temp password so user must log in with new credentials
+      user.password = hashedTemp;
       if (departmentId) user.departmentId = departmentId;
       await user.save();
     }
 
     enqueueEmail({
       to: email,
-      subject: 'Welcome to NOC Portal - Role Assigned',
-      text: `Hello,\n\nYou have been assigned the role of ${role} on the NOC Portal.\nPlease register or log in to access your dashboard.\n\nThank you!`,
+      subject: 'NOC Portal — Your Role & Temporary Password',
+      text: `Hello,\n\nYou have been assigned the role of ${role} on the NOC Portal.\n\nYour temporary login password is:\n\n  ${tempPassword}\n\nPlease log in at ${process.env.CLIENT_URL || 'https://noc.rgipt.ac.in'} using this email and temporary password. You should change it after your first login.\n\nThank you!`,
     });
 
-    if (isNewUser) {
-      return res.status(200).json({ message: `Pre-assigned! When ${email} registers, they will automatically be a ${role}.`, user });
-    }
-
-    res.status(200).json({ message: 'Role assigned successfully to existing user!', user });
+    res.status(200).json({ message: `Role assigned and credentials emailed to ${email}!`, user });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -110,16 +112,23 @@ const assignRole = async (req, res) => {
 const resendInvite = async (req, res) => {
   try {
     const { email } = req.body;
-    const user = await User.findOne({ email, password: 'PENDING_USER_NO_PASSWORD' });
-    if (!user) {
+    const user = await User.findOne({ email });
+    if (!user || user.name !== 'Pending User') {
       return res.status(404).json({ message: 'No pending user found with this email.' });
     }
+
+    // Generate a fresh 6-digit temporary password
+    const tempPassword = Math.floor(100000 + Math.random() * 900000).toString();
+    user.password = await bcrypt.hash(tempPassword, 12);
+    await user.save();
+
     enqueueEmail({
       to: email,
-      subject: 'NOC Portal — Complete Your Registration',
-      text: `Hello,\n\nYou have been assigned the role of ${user.role} on the NOC Portal.\nPlease complete your registration at: ${process.env.CLIENT_URL || 'https://noc.rgipt.ac.in'}\n\nThank you!`,
+      subject: 'NOC Portal — Your New Temporary Password',
+      text: `Hello,\n\nYour registration invitation has been resent.\n\nYou have been assigned the role of ${user.role} on the NOC Portal.\n\nYour new temporary login password is:\n\n  ${tempPassword}\n\nPlease log in at ${process.env.CLIENT_URL || 'https://noc.rgipt.ac.in'} using this email and temporary password.\n\nThank you!`,
     });
-    res.status(200).json({ message: `Registration invitation resent to ${email}` });
+
+    res.status(200).json({ message: `Fresh credentials emailed to ${email}` });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
