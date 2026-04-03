@@ -1,41 +1,14 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const mailTransportUrl = process.env.RESEND_SMTP_URL || process.env.SMTP_URL;
-const isUrlValue = (value) => /^smtps?:\/\//i.test(String(value || ''));
+// Initialize Resend automatically handling conventional SDK API keys, or safely
+// extracting the 're_...' token if the user stored it previously as an SMTP URL.
+let apiKey = process.env.RESEND_API_KEY || process.env.RESEND_SMTP_URL || process.env.SMTP_URL || '';
+if (apiKey.includes('re_')) {
+  apiKey = apiKey.match(/(re_[a-zA-Z0-9]+)/)?.[1] || apiKey;
+}
 
-const createTransporter = () => {
-  if (mailTransportUrl) {
-    if (isUrlValue(mailTransportUrl)) {
-      return nodemailer.createTransport(mailTransportUrl);
-    }
-
-    // Support users pasting a Resend API key into RESEND_SMTP_URL.
-    return nodemailer.createTransport({
-      host: 'smtp.resend.com',
-      port: 587,
-      secure: false,
-      auth: {
-        user: 'resend',
-        pass: mailTransportUrl,
-      },
-    });
-  }
-
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT, 10),
-    secure: parseInt(process.env.SMTP_PORT, 10) === 465,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASSWORD,
-    },
-  });
-};
-
-// Singleton transporter — created once on startup, reused for every email
-const transporter = createTransporter();
-
-const defaultFrom = process.env.MAIL_FROM || process.env.SMTP_FROM;
+const resend = new Resend(apiKey);
+const defaultFrom = process.env.MAIL_FROM || process.env.SMTP_FROM || 'Acme <onboarding@resend.dev>';
 
 /**
  * Escapes user-supplied content to prevent XSS in HTML emails.
@@ -49,23 +22,33 @@ const escapeHtml = (str) =>
     .replace(/'/g, '&#039;');
 
 /**
- * Generic email sender.
+ * Generic email sender utilizing native Resend SDK.
  * @param {{ to: string, subject: string, text?: string, html?: string }} options
  */
 const sendEmail = async ({ to, email, subject, text, message, html }) => {
   const recipient = to || email;
   const body = text || message;
+
+  if (!apiKey) {
+    return console.error('[Resend SDK Error] Missing API Key. Set RESEND_API_KEY in .env.');
+  }
+
   try {
-    await transporter.sendMail({
+    const { data, error } = await resend.emails.send({
       from: defaultFrom,
-      to: recipient,
+      to: typeof recipient === 'string' ? [recipient] : recipient,
       subject,
       text: body,
       html,
     });
-    console.log(`Email sent to ${recipient}`);
+
+    if (error) {
+      return console.error('[Resend SDK Error] Email sending failed:', error.message);
+    }
+
+    console.log(`[Resend SDK] Email sent securely to ${recipient} (ID: ${data.id})`);
   } catch (err) {
-    console.error('Email sending failed:', err.message);
+    console.error('[Resend SDK] Critical failure connecting to Resend API:', err.message);
   }
 };
 
