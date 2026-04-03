@@ -190,13 +190,23 @@ const login = async (req, res) => {
 
     const user = await User.findOne({ email }).populate('departmentId', 'name code');
     if (user && (await bcrypt.compare(password, user.password))) {
+      // Clear pending flag on first successful login + derive name from email
+      if (user.isPending) {
+        user.isPending = false;
+        // Set a meaningful name from the email prefix (e.g. "24pp3006" from "24pp3006@rgipt.ac.in")
+        if (user.name === 'Pending User') {
+          const roleNames = { DeptOfficer: 'TNP Officer', TNPHead: 'TNP Head', TNPOffice: 'TNP Office', Admin: 'Admin', Student: 'Student' };
+          user.name = roleNames[user.role] || user.role;
+        }
+        await user.save();
+      }
       logger.info(`User logged in successfully: ${user.email}`);
       res.json({
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
-        department: user.departmentId, // consistent with getMe format
+        department: user.departmentId,
         token: generateToken(user._id),
       });
     } else {

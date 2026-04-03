@@ -86,15 +86,16 @@ const assignRole = async (req, res) => {
         name: 'Pending User',
         password: hashedTemp,
         role,
-        departmentId: departmentId || undefined
+        departmentId: departmentId || undefined,
+        isPending: true
       });
     } else {
-      user.role = role;
-      user.name = user.name === 'Pending User' ? 'Pending User' : user.name;
-      // Reset to temp password so user must log in with new credentials
-      user.password = hashedTemp;
-      if (departmentId) user.departmentId = departmentId;
-      await user.save();
+      // Use $set to force-write isPending even on old docs that predate the schema field
+      user = await User.findOneAndUpdate(
+        { email },
+        { $set: { role, password: hashedTemp, isPending: true, ...(departmentId ? { departmentId } : {}) } },
+        { new: true }
+      );
     }
 
     enqueueEmail({
@@ -134,6 +135,17 @@ const resendInvite = async (req, res) => {
   }
 };
 
+const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findByIdAndDelete(id);
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+    res.status(200).json({ message: `User ${user.email} deleted successfully.` });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   getDepartments,
   createDepartment,
@@ -141,5 +153,6 @@ module.exports = {
   createOrUpdateRoutingConfig,
   getUsers,
   assignRole,
-  resendInvite
+  resendInvite,
+  deleteUser
 };

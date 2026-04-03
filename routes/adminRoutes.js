@@ -4,7 +4,7 @@ const { body } = require('express-validator');
 const {
   getDepartments, createDepartment,
   getRoutingConfigs, createOrUpdateRoutingConfig,
-  getUsers, assignRole, resendInvite
+  getUsers, assignRole, resendInvite, deleteUser
 } = require('../controllers/adminController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -52,5 +52,7 @@ router.route('/users/resend-invite').post(
   validate,
   resendInvite
 );
+
+router.route('/users/:id').delete(deleteUser);
 
 module.exports = router;
