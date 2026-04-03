@@ -2,6 +2,7 @@ const Application = require('../models/Application');
 const ApplicationLog = require('../models/ApplicationLog');
 const User = require('../models/User');
 const { sendNOCStatusEmail } = require('../utils/emailService');
+const { enqueueEmail } = require('../utils/emailQueue');
 
 const getOfficerApplications = async (req, res) => {
   try {
@@ -69,8 +70,6 @@ const updateApplicationStatus = async (req, res) => {
         application.recommendedAt = new Date();
         application.recommendedBy = req.user._id;
       }
-    } else if (action === 'COLLECTED') {
-      newStatus = 'COLLECTED';
     } else {
       return res.status(400).json({ message: `Invalid action: ${action}` });
     }
@@ -98,6 +97,18 @@ const updateApplicationStatus = async (req, res) => {
       remarks,
       actionByRole: isHead ? 'TNP Head' : 'Department Officer'
     }).catch(err => console.error('Failed to send status update email:', err.message));
+
+    // Broadcast to TNPOffice users when NOC is ready for collection
+    if (isHead && action === 'APPROVE') {
+      const tnpOfficeUsers = await User.find({ role: 'TNPOffice' }).select('email name');
+      for (const tnpUser of tnpOfficeUsers) {
+        enqueueEmail({
+          to: tnpUser.email,
+          subject: `New NOC Ready for Collection — ${application.studentId.name} (${application.rollNumber})`,
+          html: `<p>Dear TNP Office,</p><p>The NOC for <strong>${application.studentId.name}</strong> (Roll: ${application.rollNumber}) for <strong>${application.companyName}</strong> has been approved and is ready for physical collection.</p><p>Regards,<br/>Training &amp; Placement Cell</p>`
+        }).catch(err => console.error('Failed to enqueue TNPOffice broadcast email:', err.message));
+      }
+    }
 
     res.json(application);
   } catch (error) {

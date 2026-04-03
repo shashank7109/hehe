@@ -101,6 +101,15 @@ const sendNOCStatusEmail = async ({ studentEmail, studentName, companyName, newS
       ${safeRemarks}
       <p>Regards,<br/>Training &amp; Placement Cell</p>
     `;
+  } else if (status === 'COLLECTED') {
+    subject = `NOC Collected — ${escapeHtml(companyName)}`;
+    html = `
+      <p>Dear ${safeName},</p>
+      <p>This is to confirm that the hardcopy of your NOC for <strong>${safeCompany}</strong> has been collected by the TNP Office.</p>
+      <p>No further action is required from your end.</p>
+      ${safeRemarks}
+      <p>Regards,<br/>Training &amp; Placement Cell</p>
+    `;
   } else if (status.includes('REJECTED')) {
     const safeActor = escapeHtml(actionByRole || 'Approver');
     subject = `NOC Requisition Declined — ${escapeHtml(companyName)}`;
@@ -115,4 +124,30 @@ const sendNOCStatusEmail = async ({ studentEmail, studentName, companyName, newS
   await sendEmail({ to: studentEmail, subject, html });
 };
 
-module.exports = { sendEmail, sendNOCStatusEmail };
+/**
+ * Sends a notification email to the TNP Office when a student's NOC is approved
+ * and ready for physical collection.
+ * @param {{ tnpOfficeEmail: string, studentName: string, rollNumber: string, companyName: string }} options
+ */
+const sendTNPOfficeBroadcast = async ({ tnpOfficeEmail, studentName, rollNumber, companyName }) => {
+  const safeName = escapeHtml(studentName || 'Student');
+  const safeRoll = escapeHtml(rollNumber || 'N/A');
+  const safeCompany = escapeHtml(companyName || 'the organization');
+
+  const subject = `New NOC Ready for Collection — ${safeName} (${safeRoll})`;
+  const html = `
+    <p>Dear TNP Office,</p>
+    <p>The NOC for the following student has been approved and is ready for physical collection:</p>
+    <ul>
+      <li><strong>Student Name:</strong> ${safeName}</li>
+      <li><strong>Roll Number:</strong> ${safeRoll}</li>
+      <li><strong>Company:</strong> ${safeCompany}</li>
+    </ul>
+    <p>Please arrange for the hardcopy to be collected at the earliest.</p>
+    <p>Regards,<br/>Training &amp; Placement Cell</p>
+  `;
+
+  await sendEmail({ to: tnpOfficeEmail, subject, html });
+};
+
+module.exports = { sendEmail, sendNOCStatusEmail, sendTNPOfficeBroadcast };

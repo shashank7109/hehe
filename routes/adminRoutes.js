@@ -42,7 +42,7 @@ router.route('/users').get(getUsers);
 
 router.route('/users/assign-role').put(
   body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
-  body('role').isIn(['Student', 'DeptOfficer', 'TNPHead', 'Admin']).withMessage('Invalid role'),
+  body('role').isIn(['Student', 'DeptOfficer', 'TNPHead', 'TNPOffice', 'Admin']).withMessage('Invalid role'),
   validate,
   assignRole
 );

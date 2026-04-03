@@ -14,10 +14,24 @@ const submitApplication = async (req, res) => {
       studentMessage
     } = req.body;
 
-    const offerLetter = req.files?.['offerLetter']?.[0] ? `uploads/${req.files['offerLetter'][0].filename}` : null;
-    const statementOfObjective = req.files?.['statementOfObjective']?.[0] ? `uploads/${req.files['statementOfObjective'][0].filename}` : null;
-    const mandatoryDocument = req.files?.['mandatoryDocument']?.[0] ? `uploads/${req.files['mandatoryDocument'][0].filename}` : null;
-    const nocFormat = req.files?.['nocFormat']?.[0] ? `uploads/${req.files['nocFormat'][0].filename}` : null;
+    const offerLetter = req.files?.['offerLetter']?.[0]?.path || null;
+    const statementOfObjective = req.files?.['statementOfObjective']?.[0]?.path || null;
+    const mandatoryDocument = req.files?.['mandatoryDocument']?.[0]?.path || null;
+    const nocFormat = req.files?.['nocFormat']?.[0]?.path || null;
+    const marksheet = req.files?.['marksheet']?.[0]?.path || null;
+
+    const sopText = (req.body.sopText || '').trim();
+    const otherInternshipDescription =
+      req.body.internshipType === 'Other'
+        ? (req.body.otherInternshipDescription || '').trim()
+        : '';
+
+    if (!marksheet) {
+      return res.status(400).json({ message: 'Previous semester marksheet PDF is required.' });
+    }
+    if (!sopText) {
+      return res.status(400).json({ message: 'Statement of Purpose is required.' });
+    }
 
     // Check for duplicate active applications
     const exist = await Application.findOne({
@@ -37,7 +51,8 @@ const submitApplication = async (req, res) => {
       mentorName, mentorDesignation, mentorContact, mentorEmail,
       addresseeName, addresseeDesignation, addresseeContact, addresseeEmail,
       status: 'UNDER_REVIEW_DEPT', // correct status from the start
-      offerLetter, statementOfObjective, mandatoryDocument, nocFormat, studentMessage
+      offerLetter, statementOfObjective, mandatoryDocument, marksheet, nocFormat,
+      sopText, otherInternshipDescription, studentMessage
     });
 
     await ApplicationLog.create({
