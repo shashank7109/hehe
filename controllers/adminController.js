@@ -1,6 +1,7 @@
 const Department = require('../models/Department');
 const RoutingConfig = require('../models/RoutingConfig');
 const User = require('../models/User');
+const { enqueueEmail } = require('../utils/emailQueue');
 
 const getDepartments = async (req, res) => {
   try {
@@ -66,7 +67,10 @@ const assignRole = async (req, res) => {
   try {
     const { email, role, departmentId } = req.body;
     let user = await User.findOne({ email });
+    let isNewUser = false;
+
     if (!user) {
+      isNewUser = true;
       user = await User.create({
         email,
         name: 'Pending User',
@@ -74,11 +78,22 @@ const assignRole = async (req, res) => {
         role,
         departmentId: departmentId || undefined
       });
+    } else {
+      user.role = role;
+      if (departmentId) user.departmentId = departmentId;
+      await user.save();
+    }
+
+    enqueueEmail({
+      to: email,
+      subject: 'Welcome to NOC Portal - Role Assigned',
+      text: `Hello,\n\nYou have been assigned the role of ${role} on the NOC Portal.\nPlease register or log in to access your dashboard.\n\nThank you!`,
+    });
+
+    if (isNewUser) {
       return res.status(200).json({ message: `Pre-assigned! When ${email} registers, they will automatically be a ${role}.`, user });
     }
-    user.role = role;
-    if (departmentId) user.departmentId = departmentId;
-    await user.save();
+
     res.status(200).json({ message: 'Role assigned successfully to existing user!', user });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });

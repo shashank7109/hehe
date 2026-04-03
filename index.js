@@ -27,6 +27,7 @@ const officerRoutes = require('./routes/officerRoutes');
 const { globalLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
+app.set('trust proxy', 1);
 
 const allowedOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || '')
   .split(',')
