@@ -33,6 +33,13 @@ const getRoutingConfigs = async (req, res) => {
 const createOrUpdateRoutingConfig = async (req, res) => {
   try {
     const { departmentId, primaryApproverEmail, roleType } = req.body;
+
+    // Warn if no registered user with this email exists
+    const assignedUser = await User.findOne({ email: primaryApproverEmail });
+    const warning = !assignedUser
+      ? `Warning: No registered user found with email ${primaryApproverEmail}. The routing rule will be saved but won't work until they register.`
+      : null;
+
     let config = await RoutingConfig.findOne({ departmentId, roleType });
     if (config) {
       config.primaryApproverEmail = primaryApproverEmail;
@@ -40,7 +47,7 @@ const createOrUpdateRoutingConfig = async (req, res) => {
     } else {
       config = await RoutingConfig.create({ departmentId, primaryApproverEmail, roleType });
     }
-    res.status(200).json(config);
+    res.status(200).json({ ...config.toObject(), warning });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

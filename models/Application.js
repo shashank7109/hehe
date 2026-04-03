@@ -41,8 +41,11 @@ const applicationSchema = new mongoose.Schema({
   // Documents
   offerLetter: { type: String, required: false },
   statementOfObjective: { type: String, required: false },
-  mandatoryDocument: { type: String, required: true },
+  mandatoryDocument: { type: String, required: false },         // legacy, now optional
+  marksheet: { type: String, required: true },                  // NEW
   nocFormat: { type: String, required: false },
+  sopText: { type: String, required: true },                    // NEW
+  otherInternshipDescription: { type: String, default: '' },   // NEW
   studentMessage: { type: String, default: '' },
   remarks: { type: String, default: '' },
 

@@ -12,6 +12,7 @@ router.post('/apply', upload.fields([
   { name: 'offerLetter', maxCount: 1 },
   { name: 'statementOfObjective', maxCount: 1 },
   { name: 'mandatoryDocument', maxCount: 1 },
+  { name: 'marksheet', maxCount: 1 },
   { name: 'nocFormat', maxCount: 1 }
 ]), submitApplication);
 router.get('/applications', getMyApplications);
