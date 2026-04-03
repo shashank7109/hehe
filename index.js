@@ -152,7 +152,9 @@ const startServer = async () => {
 };
 
 // Start cluster if not in memory mode to prevent isolated DBs, and limit workers
-const numWorkers = process.env.WEB_CONCURRENCY ? parseInt(process.env.WEB_CONCURRENCY) : os.cpus().length;
+// On free tiers (e.g. Render/Railway), OS reports 4+ CPUs but only gives ~512MB RAM.
+// 2 workers provides a great balance of load-balancing concurrency without exhausting free DB connections limit.
+const numWorkers = process.env.WEB_CONCURRENCY ? parseInt(process.env.WEB_CONCURRENCY) : 2;
 
 if ((cluster.isPrimary || cluster.isMaster) && process.env.USE_IN_MEMORY_DB !== 'true') {
   logger.info(`Primary process ${process.pid} is running`);

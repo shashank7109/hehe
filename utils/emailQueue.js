@@ -24,19 +24,38 @@ emailQueue.on('error', (err) => {
     console.error('[BullMQ Queue Error]', err.message);
 });
 
-/*
-const emailWorker = new Worker('email-queue', async job => {
-    await sendEmail(job.data);
-}, { connection });
+const cluster = require('cluster');
+let emailWorker;
 
-emailWorker.on('completed', job => {
-    console.log(`[BullMQ] Email job ${job.id} completed successfully.`);
-});
+// Determine if this is the chosen worker for background jobs.
+// By defaulting worker strictly to the Primary process (or strictly the FIRST child),
+// it prevents both Node clusters from draining Redis limits, effectively cutting background bandwidth by half!
+const shouldRunWorker = cluster.isPrimary || (cluster.isWorker && cluster.worker.id === 1);
 
-emailWorker.on('failed', (job, err) => {
-    console.log(`[BullMQ] Email job ${job.id} exhausted retries and failed: ${err.message}`);
-});
-*/
+if (shouldRunWorker) {
+    emailWorker = new Worker('email-queue', async job => {
+        await sendEmail(job.data);
+    }, {
+        connection,
+        // Free-tier optimizations to prevent Redis limit depletion from useless polling loops:
+        drainDelay: 15000,         // Wait 15 seconds before polling again if queue is empty (Default is 5s)
+        stalledInterval: 300000,   // Check for stalled jobs every 5 minutes instead of every 30 seconds
+        maxStalledCount: 1
+    });
+
+    emailWorker.on('completed', job => {
+        console.log(`[BullMQ Worker ${cluster.worker ? cluster.worker.id : 'Primary'}] Email job ${job.id} completed successfully.`);
+    });
+
+    emailWorker.on('failed', (job, err) => {
+        console.log(`[BullMQ Worker ${cluster.worker ? cluster.worker.id : 'Primary'}] Email job ${job.id} failed: ${err.message}`);
+    });
+
+    emailWorker.on('error', (err) => {
+        if (err.message && err.message.includes('max requests limit exceeded')) return;
+        console.error('[BullMQ Worker Error]', err.message);
+    });
+}
 
 const enqueueEmail = async (emailData) => {
     console.log('[Mock Email Queue] Email suppressed due to Redis quota:', emailData.subject);
