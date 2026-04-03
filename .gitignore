@@ -22,7 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables
 .env
+<<<<<<< HEAD
 
 # Python
 __pycache__/
@@ -39,10 +42,13 @@ build/
 
 # Environment variables
 .env
+=======
+>>>>>>> 224c7ed6b10ccdeaa0dea298320dbabd23e92b94
 .env.local
 .env.production
 .env.development
 
+<<<<<<< HEAD
 # IDE
 .vscode/
 .idea/
@@ -60,12 +66,16 @@ logs/
 htmlcov/
 
 # Uploads
+=======
+# Uploads (user files)
+>>>>>>> 224c7ed6b10ccdeaa0dea298320dbabd23e92b94
 uploads/*
 !uploads/.gitkeep
 
 # Database
 *.db
 *.sqlite
+<<<<<<< HEAD
 *.sqlite3
 
 # Elastic Beanstalk
@@ -89,3 +99,8 @@ Thumbs.db
 firebase-key.json
 
 
+=======
+
+# OS
+Thumbs.db
+>>>>>>> 224c7ed6b10ccdeaa0dea298320dbabd23e92b94

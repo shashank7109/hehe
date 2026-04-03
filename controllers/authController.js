@@ -117,10 +117,11 @@ const register = async (req, res) => {
     OTP.findOneAndDelete({ email }).catch(() => { });
 
     res.status(201).json({
-      _id: user.id,
+      _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
+      department: user.departmentId, // consistent with other auth routes
       token: generateToken(user._id),
     });
   } catch (error) {
@@ -191,11 +192,11 @@ const login = async (req, res) => {
     if (user && (await bcrypt.compare(password, user.password))) {
       logger.info(`User logged in successfully: ${user.email}`);
       res.json({
-        _id: user.id,
+        _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
-        department: user.departmentId,
+        department: user.departmentId, // consistent with getMe format
         token: generateToken(user._id),
       });
     } else {
@@ -212,8 +213,13 @@ const getMe = async (req, res) => {
     let user = await getCache(cacheKey);
 
     if (!user) {
-      user = await User.findById(req.user.id).select('-password').populate('departmentId', 'name code');
-      if (user) await setCache(cacheKey, user, 300);
+      const dbUser = await User.findById(req.user.id).select('-password').populate('departmentId', 'name code');
+      if (dbUser) {
+        // Map departmentId to department key for frontend consistency
+        const { departmentId, ...userData } = dbUser.toObject();
+        user = { ...userData, department: departmentId };
+        await setCache(cacheKey, user, 300);
+      }
     }
 
     res.json(user);

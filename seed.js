@@ -24,6 +24,7 @@ const seedData = async () => {
     // Create dummy users
     const admin = await User.create({ name: 'Admin User', email: 'admin@rgipt.ac.in', password, role: 'Admin' });
     const tnpHead = await User.create({ name: 'TNP Head', email: 'tnphead@rgipt.ac.in', password, role: 'TNPHead' });
+    const tnpOffice = await User.create({ name: 'TNP Office', email: 'tnpoffice@rgipt.ac.in', password, role: 'TNPOffice' });
     const officer = await User.create({ name: 'TNP Officer', email: 'officer@rgipt.ac.in', password, role: 'DeptOfficer', departmentId: dept._id });
     const student = await User.create({ name: 'Dummy Student', email: 'student@rgipt.ac.in', password, role: 'Student', departmentId: dept._id, rollNumber: '21CS101' });
 
@@ -34,6 +35,7 @@ const seedData = async () => {
     console.log('Dummy Users provisioned successfully! Password for all is: password123');
     console.log('Admin:       admin@rgipt.ac.in');
     console.log('TNP Head:    tnphead@rgipt.ac.in');
+    console.log('TNP Office:  tnpoffice@rgipt.ac.in');
     console.log('TNP Officer: officer@rgipt.ac.in');
     console.log('Student:     student@rgipt.ac.in');
     console.log('----------------------------------------------------');
