@@ -22,6 +22,7 @@ const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const studentRoutes = require('./routes/studentRoutes');
 const officerRoutes = require('./routes/officerRoutes');
+const tnpOfficeRoutes = require('./routes/tnpOfficeRoutes');
 
 // Rate limiter
 const { globalLimiter } = require('./middleware/rateLimiter');
@@ -98,6 +99,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/officer', officerRoutes);
+app.use('/api/tnpoffice', tnpOfficeRoutes);
 
 // --- 404 Handler ---
 app.use((req, res) => {
