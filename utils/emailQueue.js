@@ -16,6 +16,14 @@ connection.on('error', (err) => {
 
 const emailQueue = new Queue('email-queue', { connection });
 
+emailQueue.on('error', (err) => {
+    if (err.message && err.message.includes('max requests limit exceeded')) {
+        // Suppress the large ReplyError stack trace
+        return;
+    }
+    console.error('[BullMQ Queue Error]', err.message);
+});
+
 /*
 const emailWorker = new Worker('email-queue', async job => {
     await sendEmail(job.data);
