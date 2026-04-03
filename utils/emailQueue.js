@@ -9,6 +9,7 @@ const connection = new IORedis(process.env.REDIS_URL || 'redis://127.0.0.1:6379'
 
 const emailQueue = new Queue('email-queue', { connection });
 
+/*
 const emailWorker = new Worker('email-queue', async job => {
     await sendEmail(job.data);
 }, { connection });
@@ -18,21 +19,13 @@ emailWorker.on('completed', job => {
 });
 
 emailWorker.on('failed', (job, err) => {
-    console.error(`[BullMQ] Email job ${job.id} exhausted retries and failed: ${err.message}`);
+    console.log(`[BullMQ] Email job ${job.id} exhausted retries and failed: ${err.message}`);
 });
+*/
 
 const enqueueEmail = async (emailData) => {
-    try {
-        await emailQueue.add('send-email', emailData, {
-            attempts: 3,
-            backoff: {
-                type: 'exponential',
-                delay: 2000
-            }
-        });
-    } catch (error) {
-        console.error('[BullMQ] Failed to enqueue email job:', error.message);
-    }
+    console.log('[Mock Email Queue] Email suppressed due to Redis quota:', emailData.subject);
+    return;
 };
 
 module.exports = { emailQueue, enqueueEmail };

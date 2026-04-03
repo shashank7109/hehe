@@ -1,32 +1,38 @@
 const multer = require('multer');
+const { v2: cloudinary } = require('cloudinary');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const path = require('path');
-const fs = require('fs');
 
-// Create uploads folder if it doesn't exist
-const uploadDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-const storage = multer.diskStorage({
-  destination(req, file, cb) {
-    cb(null, uploadDir);
+// Configure Cloudinary Storage for Multer
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'noc_portal_documents',
+    resource_type: 'raw', // Use raw for PDF and other non-image files to preserve content-type
+    public_id: (req, file) => {
+      try {
+        const ext = path.extname(file.originalname).toLowerCase();
+        const safeName = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9._-]/g, '_');
+        return `${Date.now()}-${safeName}${ext}`;
+      } catch (err) {
+        return `${Date.now()}-file`;
+      }
+    },
   },
-  filename(req, file, cb) {
-    // Sanitize original filename to avoid path traversal
-    const safeName = path.basename(file.originalname).replace(/[^a-zA-Z0-9._-]/g, '_');
-    cb(null, `${Date.now()}-${safeName}`);
-  }
 });
 
 function checkFileType(file, cb) {
-  const allowedExtensions = /\.pdf$/i;
   const allowedMimeType = 'application/pdf';
-
-  const validExt = allowedExtensions.test(file.originalname);
   const validMime = file.mimetype === allowedMimeType;
 
-  if (validExt && validMime) {
+  if (validMime) {
     return cb(null, true);
   }
   cb(new Error('Only PDF files are allowed.'));
