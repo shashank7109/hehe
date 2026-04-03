@@ -107,11 +107,30 @@ const assignRole = async (req, res) => {
   }
 };
 
+const resendInvite = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email, password: 'PENDING_USER_NO_PASSWORD' });
+    if (!user) {
+      return res.status(404).json({ message: 'No pending user found with this email.' });
+    }
+    enqueueEmail({
+      to: email,
+      subject: 'NOC Portal — Complete Your Registration',
+      text: `Hello,\n\nYou have been assigned the role of ${user.role} on the NOC Portal.\nPlease complete your registration at: ${process.env.CLIENT_URL || 'https://noc.rgipt.ac.in'}\n\nThank you!`,
+    });
+    res.status(200).json({ message: `Registration invitation resent to ${email}` });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   getDepartments,
   createDepartment,
   getRoutingConfigs,
   createOrUpdateRoutingConfig,
   getUsers,
-  assignRole
+  assignRole,
+  resendInvite
 };

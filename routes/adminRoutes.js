@@ -4,7 +4,7 @@ const { body } = require('express-validator');
 const {
   getDepartments, createDepartment,
   getRoutingConfigs, createOrUpdateRoutingConfig,
-  getUsers, assignRole
+  getUsers, assignRole, resendInvite
 } = require('../controllers/adminController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -45,6 +45,12 @@ router.route('/users/assign-role').put(
   body('role').isIn(['Student', 'DeptOfficer', 'TNPHead', 'TNPOffice', 'Admin']).withMessage('Invalid role'),
   validate,
   assignRole
+);
+
+router.route('/users/resend-invite').post(
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+  validate,
+  resendInvite
 );
 
 module.exports = router;
