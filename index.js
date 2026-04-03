@@ -37,6 +37,12 @@ if (allowedOrigins.length === 0) {
   console.warn('CORS is enabled but no CLIENT_URLS or CLIENT_URL is set. Browser requests may be blocked.');
 }
 
+// --- Health Checks FIRST — before CORS/rate-limiter so Uptime Robot always gets HTTP 200 ---
+app.get('/', (req, res) => res.status(200).send('OK'));
+app.get(['/health', '/api/health'], (req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
+});
+
 // --- Core Middleware ---
 app.use(cors({
   origin: (origin, callback) => {
@@ -55,22 +61,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-app.get('/', (req, res) => {
-  res.status(200).json({
-    message: 'NOC backend is running',
-    health: '/health',
-    apiHealth: '/api/health',
-  });
-});
-
-// --- Health Check ---
-app.get(['/health', '/api/health'], (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
-  });
-});
 
 // --- Prom Client Metrics ---
 const promClient = require('prom-client');
