@@ -48,7 +48,7 @@ const updateTNPOfficeStatus = async (req, res) => {
     enqueueEmail({
       to: application.studentId.email,
       subject: `NOC Collected — ${application.companyName}`,
-      text: `Dear ${application.studentId.name},\n\nYour NOC hardcopy for ${application.companyName} has been collected by the TNP Office.\n\nRegards,\nRGIPT TNP Cell`
+      text: `Dear ${application.studentId.name},\n\nYour NOC hardcopy for ${application.companyName} has been collected from the TNP Office.\n\nRegards,\nRGIPT TNP Cell`
     }).catch(err => console.error('Failed to enqueue COLLECTED email:', err.message));
 
     return res.status(200).json(application);

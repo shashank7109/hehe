@@ -57,7 +57,7 @@ const sendOtp = async (req, res) => {
     }
 
     const userExists = await User.findOne({ email });
-    if (userExists && userExists.password !== 'PENDING_USER_NO_PASSWORD') {
+    if (userExists && !userExists.isPending) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
@@ -98,7 +98,7 @@ const register = async (req, res) => {
     }
 
     let user = await User.findOne({ email });
-    if (user && user.password !== 'PENDING_USER_NO_PASSWORD') {
+    if (user && !user.isPending) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
@@ -107,6 +107,7 @@ const register = async (req, res) => {
     if (user) {
       user.name = name;
       user.password = hashedPassword;
+      user.isPending = false;
       await user.save();
     } else {
       user = await User.create({ name, email, password: hashedPassword, role: 'Student' });

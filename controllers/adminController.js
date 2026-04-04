@@ -90,10 +90,11 @@ const assignRole = async (req, res) => {
         isPending: true
       });
     } else {
-      // Use $set to force-write isPending even on old docs that predate the schema field
+      // Existing user: update role/dept and reset password, but do NOT set isPending
+      // (they are already registered — setting isPending would allow re-registration to overwrite their account)
       user = await User.findOneAndUpdate(
         { email },
-        { $set: { role, password: hashedTemp, isPending: true, ...(departmentId ? { departmentId } : {}) } },
+        { $set: { role, password: hashedTemp, ...(departmentId ? { departmentId } : {}) } },
         { new: true }
       );
     }
