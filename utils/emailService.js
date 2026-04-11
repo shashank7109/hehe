@@ -134,4 +134,66 @@ const sendTNPOfficeBroadcast = async ({ tnpOfficeEmail, studentName, rollNumber,
   await sendEmail({ to: tnpOfficeEmail, subject, html });
 };
 
-module.exports = { sendEmail, sendNOCStatusEmail, sendTNPOfficeBroadcast };
+/**
+ * Notifies a Department Officer when a new NOC application is submitted.
+ * @param {{ officerEmail: string, studentName: string, companyName: string, rollNumber: string }} options
+ */
+const notifyOfficerNewApplication = async ({ officerEmail, studentName, companyName, rollNumber }) => {
+  const safeName = escapeHtml(studentName || 'Student');
+  const safeRoll = escapeHtml(rollNumber || 'N/A');
+  const safeCompany = escapeHtml(companyName || 'the organization');
+
+  const subject = `New NOC Application — ${safeName} (${safeRoll})`;
+  const html = `
+    <p>Dear Officer,</p>
+    <p>A new NOC requisition has been submitted by <strong>${safeName}</strong> (Roll: <strong>${safeRoll}</strong>) for <strong>${safeCompany}</strong>.</p>
+    <p>Please log in to your dashboard to review and process this application.</p>
+    <p>Regards,<br/>NOC Portal System</p>
+  `;
+
+  await sendEmail({ to: officerEmail, subject, html });
+};
+
+/**
+ * Notifies the TNP Head when an application has been forwarded by a Department Officer.
+ * @param {{ headEmail: string, studentName: string, companyName: string, departmentName: string, rollNumber: string }} options
+ */
+const notifyHeadApplicationForwarded = async ({ headEmail, studentName, companyName, departmentName, rollNumber }) => {
+  const safeName = escapeHtml(studentName || 'Student');
+  const safeRoll = escapeHtml(rollNumber || 'N/A');
+  const safeCompany = escapeHtml(companyName || 'the organization');
+  const safeDept = escapeHtml(departmentName || 'Unknown Department');
+
+  const subject = `NOC Application Forwarded — ${safeName} (${safeDept})`;
+  const html = `
+    <p>Dear TNP Head,</p>
+    <p>An NOC requisition for <strong>${safeName}</strong> (Roll: <strong>${safeRoll}</strong>) from the <strong>${safeDept}</strong> department has been verified and forwarded to your desk for final approval.</p>
+    <p><strong>Company:</strong> ${safeCompany}</p>
+    <p>Please log in to your dashboard to review and approve this application.</p>
+    <p>Regards,<br/>NOC Portal System</p>
+  `;
+
+  await sendEmail({ to: headEmail, subject, html });
+};
+
+/**
+ * Notifies the TNP Office when an NOC has been approved by TNP Head and is ready for collection.
+ * @param {{ officeEmail: string, studentName: string, rollNumber: string, companyName: string }} options
+ */
+const notifyOfficeNOCReady = async ({ officeEmail, studentName, rollNumber, companyName }) => {
+  const safeName = escapeHtml(studentName || 'Student');
+  const safeRoll = escapeHtml(rollNumber || 'N/A');
+  const safeCompany = escapeHtml(companyName || 'the organization');
+
+  const subject = `NOC Ready for Collection — ${safeName} (${safeRoll})`;
+  const html = `
+    <p>Dear TNP Office,</p>
+    <p>The NOC requisition for <strong>${safeName}</strong> (Roll: <strong>${safeRoll}</strong>) at <strong>${safeCompany}</strong> has been approved by the TNP Head and is now ready for collection/final processing.</p>
+    <p>Please prepare the hardcopy for student collection.</p>
+    <p>Regards,<br/>NOC Portal System</p>
+  `;
+
+  await sendEmail({ to: officeEmail, subject, html });
+};
+
+module.exports = { sendEmail, sendNOCStatusEmail, sendTNPOfficeBroadcast, notifyOfficerNewApplication, notifyHeadApplicationForwarded, notifyOfficeNOCReady };

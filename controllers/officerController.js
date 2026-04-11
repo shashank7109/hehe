@@ -1,7 +1,7 @@
 const Application = require('../models/Application');
 const ApplicationLog = require('../models/ApplicationLog');
 const User = require('../models/User');
-const { sendNOCStatusEmail } = require('../utils/emailService');
+const { sendNOCStatusEmail, notifyHeadApplicationForwarded, notifyOfficeNOCReady } = require('../utils/emailService');
 const { enqueueEmail } = require('../utils/emailQueue');
 
 const getOfficerApplications = async (req, res) => {
@@ -43,13 +43,15 @@ const updateApplicationStatus = async (req, res) => {
     const { id } = req.params;
     const { action, remarks } = req.body;
 
-    const application = await Application.findById(id).populate('studentId', 'name email');
+    const application = await Application.findById(id)
+      .populate('studentId', 'name email rollNumber')
+      .populate('departmentId', 'name code');
     if (!application) return res.status(404).json({ message: 'Application not found' });
 
     const isHead = req.user.role === 'TNPHead';
 
     // Authorization: DeptOfficer can only act on their own department's applications
-    if (!isHead && String(application.departmentId) !== String(req.user.departmentId)) {
+    if (!isHead && String(application.departmentId._id) !== String(req.user.departmentId)) {
       return res.status(403).json({ message: 'Not authorized to act on this application.' });
     }
 
@@ -98,15 +100,30 @@ const updateApplicationStatus = async (req, res) => {
       actionByRole: isHead ? 'TNP Head' : 'Department Officer'
     }).catch(err => console.error('Failed to send status update email:', err.message));
 
-    // Broadcast to TNPOffice users when NOC is ready for collection
-    if (isHead && action === 'APPROVE') {
+    // Notify TNP Head when Department Officer forwards application
+    if (!isHead && action === 'APPROVE' && newStatus === 'UNDER_REVIEW_HEAD') {
+      const tnpHead = await User.findOne({ role: 'TNPHead' });
+      if (tnpHead) {
+        notifyHeadApplicationForwarded({
+          headEmail: tnpHead.email,
+          studentName: application.studentId.name,
+          companyName: application.companyName,
+          departmentName: application.departmentId?.name || 'Unknown Department',
+          rollNumber: application.rollNumber || application.studentId.rollNumber || 'N/A'
+        }).catch(err => console.error('Failed to send TNP Head notification:', err.message));
+      }
+    }
+
+    // Notify TNP Office (NOT CDC Chairperson) when TNP Head approves and NOC is ready for collection
+    if (isHead && action === 'APPROVE' && newStatus === 'READY_FOR_COLLECTION') {
       const tnpOfficeUsers = await User.find({ role: 'TNPOffice' }).select('email name');
       for (const tnpUser of tnpOfficeUsers) {
-        enqueueEmail({
-          to: tnpUser.email,
-          subject: `New NOC Ready for Collection — ${application.studentId.name} (${application.rollNumber})`,
-          html: `<p>Dear TNP Office,</p><p>The NOC for <strong>${application.studentId.name}</strong> (Roll: ${application.rollNumber}) for <strong>${application.companyName}</strong> has been approved and is ready for physical collection.</p><p>Regards,<br/>Training &amp; Placement Cell</p>`
-        }).catch(err => console.error('Failed to enqueue TNPOffice broadcast email:', err.message));
+        notifyOfficeNOCReady({
+          officeEmail: tnpUser.email,
+          studentName: application.studentId.name,
+          rollNumber: application.rollNumber || application.studentId.rollNumber || 'N/A',
+          companyName: application.companyName
+        }).catch(err => console.error('Failed to send TNP Office notification:', err.message));
       }
     }
 

@@ -80,13 +80,17 @@ const assignRole = async (req, res) => {
     const tempPassword = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedTemp = await bcrypt.hash(tempPassword, 12);
 
+    // Global roles must never have a department
+    const isGlobalRole = ['TNPHead', 'TNPOffice', 'CDCChairperson', 'Admin'].includes(role);
+    const finalDepartmentId = isGlobalRole ? null : (departmentId || undefined);
+
     if (!user) {
       user = await User.create({
         email,
         name: 'Pending User',
         password: hashedTemp,
         role,
-        departmentId: departmentId || undefined,
+        departmentId: finalDepartmentId,
         isPending: true
       });
     } else {
@@ -94,7 +98,7 @@ const assignRole = async (req, res) => {
       // (they are already registered — setting isPending would allow re-registration to overwrite their account)
       user = await User.findOneAndUpdate(
         { email },
-        { $set: { role, password: hashedTemp, ...(departmentId ? { departmentId } : {}) } },
+        { $set: { role, password: hashedTemp, departmentId: finalDepartmentId } },
         { new: true }
       );
     }
@@ -147,6 +151,115 @@ const deleteUser = async (req, res) => {
   }
 };
 
+/**
+ * Get global role assignments (TNP Head, TNP Office, CDC Chairperson)
+ */
+const getGlobalRoles = async (req, res) => {
+  try {
+    const globalRoles = await User.find({
+      role: { $in: ['TNPHead', 'TNPOffice', 'CDCChairperson'] }
+    }).select('email role name isPending');
+
+    res.json(globalRoles);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+/**
+ * Update global role assignment (TNP Head, TNP Office, or CDC Chairperson)
+ * Creates or updates the user with the specified role
+ */
+const updateGlobalRole = async (req, res) => {
+  try {
+    const { role, email } = req.body;
+
+    // Validate role
+    if (!['TNPHead', 'TNPOffice', 'CDCChairperson'].includes(role)) {
+      return res.status(400).json({ message: 'Invalid global role. Must be TNPHead, TNPOffice, or CDCChairperson.' });
+    }
+
+    // Check if a user with this role already exists
+    const existingRoleUser = await User.findOne({ role });
+
+    // Check if the email is already in use by another user
+    const existingEmailUser = await User.findOne({ email });
+
+    // Generate a 6-digit temporary password
+    const tempPassword = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedTemp = await bcrypt.hash(tempPassword, 12);
+
+    let user;
+    let isNewUser = false;
+
+    // Global roles must never have a department
+    const isGlobalRole = ['TNPHead', 'TNPOffice', 'CDCChairperson'].includes(role);
+
+    if (existingRoleUser && existingRoleUser.email === email) {
+      // Same user, just update password
+      existingRoleUser.password = hashedTemp;
+      existingRoleUser.isPending = true;
+      if (isGlobalRole) existingRoleUser.departmentId = null;
+      await existingRoleUser.save();
+      user = existingRoleUser;
+    } else if (existingRoleUser && existingEmailUser) {
+      // Both role and email exist but are different users
+      // Delete the old role user and update the email user to have this role
+      await User.findByIdAndDelete(existingRoleUser._id);
+      existingEmailUser.role = role;
+      existingEmailUser.password = hashedTemp;
+      existingEmailUser.isPending = true;
+      existingEmailUser.departmentId = null; // Global roles don't have departments
+      await existingEmailUser.save();
+      user = existingEmailUser;
+    } else if (existingRoleUser && !existingEmailUser) {
+      // Role exists but email doesn't - update the role user's email
+      existingRoleUser.email = email;
+      existingRoleUser.password = hashedTemp;
+      existingRoleUser.isPending = true;
+      existingRoleUser.name = 'Pending User';
+      if (isGlobalRole) existingRoleUser.departmentId = null;
+      await existingRoleUser.save();
+      user = existingRoleUser;
+    } else if (existingEmailUser && !existingRoleUser) {
+      // Email exists but role doesn't - update their role
+      existingEmailUser.role = role;
+      existingEmailUser.password = hashedTemp;
+      existingEmailUser.isPending = true;
+      existingEmailUser.departmentId = null; // Global roles don't have departments
+      await existingEmailUser.save();
+      user = existingEmailUser;
+    } else {
+      // Neither exists - create new user
+      user = await User.create({
+        email,
+        name: 'Pending User',
+        password: hashedTemp,
+        role,
+        isPending: true
+      });
+      isNewUser = true;
+    }
+
+    // Send email notification
+    const roleNames = { TNPHead: 'TNP Head', TNPOffice: 'TNP Office', CDCChairperson: 'CDC Chairperson' };
+    enqueueEmail({
+      to: email,
+      subject: `NOC Portal — ${roleNames[role]} Role Assignment`,
+      text: `Hello,\n\nYou have been assigned the role of ${roleNames[role]} on the NOC Portal.\n\nYour temporary login password is:\n\n  ${tempPassword}\n\nPlease log in at ${process.env.CLIENT_URL || 'https://noc.rgiptresume.in'} using this email and temporary password.\n\nThank you!`,
+    });
+
+    res.status(200).json({
+      message: `${roleNames[role]} role assigned to ${email}!`,
+      user,
+      isNewUser
+    });
+  } catch (error) {
+    console.error('[updateGlobalRole] Error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   getDepartments,
   createDepartment,
@@ -155,5 +268,7 @@ module.exports = {
   getUsers,
   assignRole,
   resendInvite,
-  deleteUser
+  deleteUser,
+  getGlobalRoles,
+  updateGlobalRole
 };
