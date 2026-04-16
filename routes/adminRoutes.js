@@ -4,7 +4,8 @@ const { body } = require('express-validator');
 const {
   getDepartments, createDepartment,
   getRoutingConfigs, createOrUpdateRoutingConfig,
-  getUsers, assignRole, resendInvite, deleteUser
+  getUsers, assignRole, resendInvite, deleteUser,
+  getGlobalRoles, updateGlobalRole
 } = require('../controllers/adminController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -42,7 +43,7 @@ router.route('/users').get(getUsers);
 
 router.route('/users/assign-role').put(
   body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
-  body('role').isIn(['Student', 'DeptOfficer', 'TNPHead', 'TNPOffice', 'Admin']).withMessage('Invalid role'),
+  body('role').isIn(['Student', 'DeptOfficer', 'TNPHead', 'TNPOffice', 'Admin', 'CDCChairperson']).withMessage('Invalid role'),
   validate,
   assignRole
 );
@@ -54,5 +55,14 @@ router.route('/users/resend-invite').post(
 );
 
 router.route('/users/:id').delete(deleteUser);
+
+router.route('/global-roles').get(getGlobalRoles);
+
+router.route('/global-roles/assign').post(
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+  body('role').isIn(['TNPHead', 'TNPOffice', 'CDCChairperson']).withMessage('Invalid global role'),
+  validate,
+  updateGlobalRole
+);
 
 module.exports = router;

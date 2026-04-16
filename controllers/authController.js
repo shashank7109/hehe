@@ -196,7 +196,7 @@ const login = async (req, res) => {
         user.isPending = false;
         // Set a meaningful name from the email prefix (e.g. "24pp3006" from "24pp3006@rgipt.ac.in")
         if (user.name === 'Pending User') {
-          const roleNames = { DeptOfficer: 'TNP Officer', TNPHead: 'TNP Head', TNPOffice: 'TNP Office', Admin: 'Admin', Student: 'Student' };
+          const roleNames = { DeptOfficer: 'TNP Officer', TNPHead: 'TNP Head', TNPOffice: 'TNP Office', Admin: 'Admin', Student: 'Student', CDCChairperson: 'CDC Chairperson' };
           user.name = roleNames[user.role] || user.role;
         }
         await user.save();

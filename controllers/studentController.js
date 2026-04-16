@@ -1,7 +1,9 @@
 const Application = require('../models/Application');
 const ApplicationLog = require('../models/ApplicationLog');
 const RoutingConfig = require('../models/RoutingConfig');
+const User = require('../models/User');
 const { enqueueEmail } = require('../utils/emailQueue');
+const { notifyOfficerNewApplication } = require('../utils/emailService');
 const logger = require('../utils/logger');
 
 const submitApplication = async (req, res) => {
@@ -66,11 +68,31 @@ const submitApplication = async (req, res) => {
     // Notify officer via routing config (fire-and-forget)
     const routing = await RoutingConfig.findOne({ departmentId });
     if (routing?.primaryApproverEmail) {
+      // Send basic notification via queue
       enqueueEmail({
         to: routing.primaryApproverEmail,
         subject: 'New NOC Application Submitted',
         text: `A new NOC application for ${companyName} has been submitted by ${req.user.name}.`,
       });
+
+      // Send formatted notification email (fire-and-forget)
+      notifyOfficerNewApplication({
+        officerEmail: routing.primaryApproverEmail,
+        studentName: req.user.name,
+        companyName,
+        rollNumber
+      }).catch(err => logger.error(`Failed to send officer notification: ${err.message}`));
+    } else {
+      // Fallback: Find department officer directly
+      const officer = await User.findOne({ role: 'DeptOfficer', departmentId });
+      if (officer) {
+        notifyOfficerNewApplication({
+          officerEmail: officer.email,
+          studentName: req.user.name,
+          companyName,
+          rollNumber
+        }).catch(err => logger.error(`Failed to send officer notification: ${err.message}`));
+      }
     }
 
     logger.info(`New application submitted by ${req.user.name} (Student ID: ${req.user._id}) for ${companyName}`);
