@@ -72,7 +72,7 @@ const sendNOCStatusEmail = async ({ studentEmail, studentName, companyName, newS
     html = `
       <p>Dear ${safeName},</p>
       <p>Your NOC requisition for <strong>${safeCompany}</strong> has been verified and cleared by your Department Officer.</p>
-      <p>It has now been forwarded to the <strong>TNP Head</strong> for final approval.</p>
+      <p>It has now been forwarded to the <strong>Chairman T&amp;P</strong> for final approval.</p>
       ${safeRemarks}
       <p>Regards,<br/>Training &amp; Placement Cell</p>
     `;
@@ -80,7 +80,7 @@ const sendNOCStatusEmail = async ({ studentEmail, studentName, companyName, newS
     subject = `NOC Approved: Ready for Collection — ${escapeHtml(companyName)}`;
     html = `
       <p>Dear ${safeName},</p>
-      <p>Congratulations! Your NOC for <strong>${safeCompany}</strong> has been officially approved by the TNP Head.</p>
+      <p>Congratulations! Your NOC for <strong>${safeCompany}</strong> has been officially approved by the Chairman T&amp;P.</p>
       <p>Your document is now <strong>ready for collection</strong>. Please visit the TNP cell to collect your hardcopy.</p>
       ${safeRemarks}
       <p>Regards,<br/>Training &amp; Placement Cell</p>
@@ -166,7 +166,7 @@ const notifyHeadApplicationForwarded = async ({ headEmail, studentName, companyN
 
   const subject = `NOC Application Forwarded — ${safeName} (${safeDept})`;
   const html = `
-    <p>Dear TNP Head,</p>
+    <p>Dear Chairman T&amp;P,</p>
     <p>An NOC requisition for <strong>${safeName}</strong> (Roll: <strong>${safeRoll}</strong>) from the <strong>${safeDept}</strong> department has been verified and forwarded to your desk for final approval.</p>
     <p><strong>Company:</strong> ${safeCompany}</p>
     <p>Please log in to your dashboard to review and approve this application.</p>
@@ -188,7 +188,7 @@ const notifyOfficeNOCReady = async ({ officeEmail, studentName, rollNumber, comp
   const subject = `NOC Ready for Collection — ${safeName} (${safeRoll})`;
   const html = `
     <p>Dear TNP Office,</p>
-    <p>The NOC requisition for <strong>${safeName}</strong> (Roll: <strong>${safeRoll}</strong>) at <strong>${safeCompany}</strong> has been approved by the TNP Head and is now ready for collection/final processing.</p>
+    <p>The NOC requisition for <strong>${safeName}</strong> (Roll: <strong>${safeRoll}</strong>) at <strong>${safeCompany}</strong> has been approved by the Chairman T&amp;P and is now ready for collection/final processing.</p>
     <p>Please prepare the hardcopy for student collection.</p>
     <p>Regards,<br/>NOC Portal System</p>
   `;
